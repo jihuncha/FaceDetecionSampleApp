@@ -151,7 +151,9 @@ class CameraActivity : AppCompatActivity() {
         //매니저를 설정한다.
         cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
 
+        //Surface를 생성한다.
         previewSurface = binding.svCamera.holder.surface
+        //Surface Callback 추가
         binding.svCamera.holder.addCallback(surfaceReadyCallback)
     }
 
