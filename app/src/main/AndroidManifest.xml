@@ -14,7 +14,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FaceDetecionSampleApp">
         <activity
-            android:name=".ui.DetectionActivity"
+            android:name=".ui.CameraActivity"
             android:exported="false" />
         <activity
             android:name=".MainActivity"

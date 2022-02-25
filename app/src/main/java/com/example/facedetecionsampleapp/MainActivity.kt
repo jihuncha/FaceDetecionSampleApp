@@ -9,7 +9,7 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.facedetecionsampleapp.databinding.ActivityMainBinding
-import com.example.facedetecionsampleapp.ui.DetectionActivity
+import com.example.facedetecionsampleapp.ui.CameraActivity
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -68,7 +68,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startDetectionActivity() {
         Log.d(TAG, "startDetectionActivity()")
-        val intent = Intent(this, DetectionActivity::class.java)
+        val intent = Intent(this, CameraActivity::class.java)
         startActivity(intent)
     }
 }
