@@ -45,12 +45,10 @@ class CameraActivity : AppCompatActivity() {
     //Open Camera Callback
     private val openCameraCallback = object : CameraDevice.StateCallback() {
         override fun onDisconnected(p0: CameraDevice) {
-            //TODO
             Log.d(TAG, "Camera onDisconnected")
         }
 
         override fun onError(p0: CameraDevice, p1: Int) {
-            //TODO
             Log.e(TAG, "Camera onError")
         }
 
@@ -87,7 +85,8 @@ class CameraActivity : AppCompatActivity() {
                     Log.d(TAG, "onOpened/displayRotation - $displayRotation")
 
                     //TODO rotation 없는 경우는 0으로 정의해버린다.
-                    val swappedDimensions = checkDimensions(displayRotation ?: 0, cameraCharacteristics)
+                    val swappedDimensions =
+                        checkDimensions(displayRotation ?: 0, cameraCharacteristics)
                     Log.d(TAG, "swappedDimensions - $swappedDimensions")
                     // swap width and height if needed
                     val rotatedPreviewWidth =
@@ -143,7 +142,6 @@ class CameraActivity : AppCompatActivity() {
         override fun onConfigureFailed(session: CameraCaptureSession) {
             Log.e(TAG, "onConfigureFailed - $session")
         }
-
     }
 
     //surface 준비됨을 파악
@@ -175,7 +173,7 @@ class CameraActivity : AppCompatActivity() {
         //매니저를 설정한다.
         cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
 
-        //Surface를 생성한다.
+        //Surface 할당
         previewSurface = binding.svCamera.holder.surface
         //Surface Callback 추가
         binding.svCamera.holder.addCallback(surfaceReadyCallback)
@@ -201,6 +199,7 @@ class CameraActivity : AppCompatActivity() {
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             //권한이 없는 경우..
+            Log.e(TAG, "startCameraSession - No Permission!!")
             return
         }
 
@@ -249,7 +248,7 @@ class CameraActivity : AppCompatActivity() {
     /**
      * Compares two `Size`s based on their areas.
      */
-    internal class CompareSizesByArea : Comparator<Size> {
+    inner class CompareSizesByArea : Comparator<Size> {
         override fun compare(lhs: Size, rhs: Size): Int {
             return lhs.width * lhs.height - rhs.width * rhs.height
         }
