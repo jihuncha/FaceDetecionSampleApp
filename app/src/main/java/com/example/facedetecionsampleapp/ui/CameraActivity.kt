@@ -8,18 +8,22 @@ import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
+import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.Size
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.example.facedetecionsampleapp.databinding.ActivityCameraBinding
-import com.google.android.gms.common.util.concurrent.HandlerExecutor
+import java.util.*
+import java.util.concurrent.Executors
 
 
 class CameraActivity : AppCompatActivity() {
@@ -32,8 +36,10 @@ class CameraActivity : AppCompatActivity() {
     //카메라 매니저
     private lateinit var cameraManager: CameraManager
 
+    //Surface
     private lateinit var previewSurface: Surface
 
+    //카메라 디바이스
     private lateinit var cameraDevice: CameraDevice
 
     //Open Camera Callback
@@ -64,13 +70,24 @@ class CameraActivity : AppCompatActivity() {
             //RAW는 ImageFormat.RAW_SENSOR 포맷을 참조합니다.
             //TODO 임시로 잡았지만 추후 해상도에 맞게 사이즈를 찾는 것이 중요하다
             cameraCharacteristics[CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP]?.let { streamConfigurationMap ->
-                streamConfigurationMap.getOutputSizes(ImageFormat.YUV_420_888)?.let { yuvSizes ->
+                streamConfigurationMap.getOutputSizes(ImageFormat.YUV_420_888)?.let { sizeList ->
                     //일단 임시로 yuv중에서 가장 마지막걸로 사용.
-                    val previewSize = yuvSizes.last()
+//                    val previewSize = yuvSizes.last()
 
-                    val displayRotation = windowManager.defaultDisplay.rotation
+                    Log.d(TAG, "sizeList - ${sizeList.toList()}")
+                    // Bigger is better when it comes to saving our image
+                    val previewSize: Size = Collections.max(sizeList.asList(), CompareSizesByArea())
 
-                    val swappedDimensions = checkDimensions(displayRotation, cameraCharacteristics)
+                    val displayRotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        this@CameraActivity.display?.rotation
+                    } else {
+                        windowManager.defaultDisplay.rotation
+                    }
+
+                    Log.d(TAG, "onOpened/displayRotation - $displayRotation")
+
+                    //TODO rotation 없는 경우는 0으로 정의해버린다.
+                    val swappedDimensions = checkDimensions(displayRotation ?: 0, cameraCharacteristics)
                     Log.d(TAG, "swappedDimensions - $swappedDimensions")
                     // swap width and height if needed
                     val rotatedPreviewWidth =
@@ -85,18 +102,24 @@ class CameraActivity : AppCompatActivity() {
                 }
             }
 
-//            val sessionConfiguration = SessionConfiguration(
-//                SessionConfiguration.SESSION_REGULAR,
-//                Collections.singletonList(outputConfiguration),
-//                HandlerExecutor(mCameraHandler.getLooper()),
-//                mCameraSessionListener
-//            )
-//            cameraDevice.createCaptureSession(sessionConfiguration)
-
             //카메라 캡쳐
-            cameraDevice.createCaptureSession(mutableListOf(previewSurface),
-                captureCallback,
-                Handler(Looper.getMainLooper()))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                Log.d(TAG, "onOpened/UPPER THEN P!!")
+                cameraDevice.createCaptureSession(
+                    SessionConfiguration(
+                        SessionConfiguration.SESSION_REGULAR,
+                        Collections.singletonList(OutputConfiguration(previewSurface)),
+                        Executors.newCachedThreadPool(),
+                        captureCallback
+                    )
+                )
+            } else {
+                cameraDevice.createCaptureSession(
+                    mutableListOf(previewSurface),
+                    captureCallback,
+                    Handler(Looper.getMainLooper())
+                )
+            }
         }
     }
 
@@ -105,13 +128,14 @@ class CameraActivity : AppCompatActivity() {
         override fun onConfigured(session: CameraCaptureSession) {
             Log.d(TAG, "onConfigured")
             // session configured
-            val previewRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-                .apply {
-                    addTarget(previewSurface)
-                }
+            val previewRequestBuilder =
+                cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+                    .apply {
+                        addTarget(previewSurface)
+                    }
             session.setRepeatingRequest(
                 previewRequestBuilder.build(),
-                object: CameraCaptureSession.CaptureCallback(){},
+                object : CameraCaptureSession.CaptureCallback() {},
                 Handler(Looper.getMainLooper())
             )
         }
@@ -123,7 +147,7 @@ class CameraActivity : AppCompatActivity() {
     }
 
     //surface 준비됨을 파악
-    private val surfaceReadyCallback = object: SurfaceHolder.Callback {
+    private val surfaceReadyCallback = object : SurfaceHolder.Callback {
         override fun surfaceCreated(p0: SurfaceHolder) {
             Log.d(TAG, "surfaceCreated")
             startCameraSession()
@@ -215,5 +239,19 @@ class CameraActivity : AppCompatActivity() {
             }
         }
         return swappedDimensions
+    }
+
+    override fun onStop() {
+        Log.d(TAG, "onStop")
+        super.onStop()
+    }
+
+    /**
+     * Compares two `Size`s based on their areas.
+     */
+    internal class CompareSizesByArea : Comparator<Size> {
+        override fun compare(lhs: Size, rhs: Size): Int {
+            return lhs.width * lhs.height - rhs.width * rhs.height
+        }
     }
 }
